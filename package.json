@@ -6,6 +6,8 @@
   "scripts": {
     "prebuild": "rm -rf dist && mkdir dist",
     "build": "browserify src/main.js -t babelify -d > dist/main.js",
+    "prewatch": "npm run build",
+    "watch": "watch 'npm run build' src",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -21,6 +23,7 @@
     "browserify": "^10.2.4",
     "dat-gui": "^0.5.0",
     "eslint": "^0.24.0",
-    "fast-simplex-noise": "^1.0.0"
+    "fast-simplex-noise": "^1.0.0",
+    "watch": "^0.16.0"
   }
 }
