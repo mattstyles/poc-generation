@@ -2,9 +2,9 @@
 import Simplex from 'fast-simplex-noise'
 import makeGUI from './gui'
 
-const CANVAS_SIZE = 16
-const CHUNK_SIZE = 8
-const PIXEL_SIZE = 32
+const CANVAS_SIZE = 8
+const CHUNK_SIZE = 4
+const PIXEL_SIZE = 64
 
 const canvas = document.createElement( 'canvas' )
 const ctx = canvas.getContext( '2d' )
@@ -74,6 +74,47 @@ class ChunkView {
         return v0 + t * ( v1 - v0 )
     }
 
+    logVisible() {
+        for ( let i = 0; i < this.mapSize; i++ ) {
+            let row = []
+
+            for ( let j = 0; j < this.mapSize; j++ ) {
+                let value = this.getPixel( j, i )
+
+                row.push( value.toFixed( 2 ) )
+            }
+
+            console.log( row.join( ',' ) )
+        }
+    }
+
+    log() {
+        for ( let i = 0; i < this.fullSize; i++ ) {
+            let row = []
+            let colors = []
+
+            for ( let j = 0; j < this.fullSize; j++ ) {
+                let value = this.map[ this.to1d( j, i ) ]
+
+                row.push( '%c' + value.toFixed( 2 ) )
+
+                if ( i >= this.offset &&
+                     i < this.mapSize + this.offset &&
+                     j >= this.offset &&
+                     j < this.mapSize + this.offset
+                     ) {
+                    colors.push( 'color:#ff6644' )
+                } else {
+                    colors.push( 'color:#888888' )
+                }
+
+            }
+
+
+            console.log( row.join( ','), ...colors )
+        }
+    }
+
     /**
      * Generates a new map for a chunk
      * Maps are larger than they need to be because they overlap into
@@ -86,28 +127,45 @@ class ChunkView {
         let simplex = new Simplex( simplexParams )
         let rawValue = 1
         let edgeValue = 1
+        let lerpValue = 1
+
+        let tmp = Math.random()
 
         for ( let y = 0; y < this.fullSize; y++ ) {
+
+            // tmp += 0.01
+
             for ( let x = 0; x < this.fullSize; x++ ) {
-                rawValue = simplex.get2DNoise( x, y )
+                // rawValue = simplex.get2DNoise( x, y )
+
+
+                tmp += 0.01
+
+                rawValue = tmp
 
                 // Overlap top
                 if ( edges.top ) {
                     if ( y < this.mapSize ) {
                         edgeValue = edges.top.map[ this.to1d( x, y + this.mapSize ) ]
+                        lerpValue = 1 - ( ( y - this.offset ) / this.mapSize )
 
-                        if ( x === 0 && y === 0 ) {
-                            console.log( 'pixel', x, y, '--', rawValue, edgeValue, 1 - ( y / this.mapSize ) )
+                        if ( x === this.offset && y === this.offset ) {
+
+                            console.log( 'pixel', x, y )
+                            console.log( 'edgePixel', x, y + this.mapSize )
+                            console.log( 'rawValue', rawValue )
+                            console.log( 'edgeValue', edgeValue )
+                            console.log( 'lerp', lerpValue )
                         }
 
                         rawValue = this.lerp(
                             rawValue,
                             edgeValue,
-                            // 1 - ( y / this.mapSize )
+                            // lerpValue
                             1
                         )
 
-                        if ( x === 0 && y === 0 ) {
+                        if ( x === this.offset && y === this.offset ) {
                             console.log( 'lerped value', rawValue )
                         }
 
@@ -115,7 +173,12 @@ class ChunkView {
                     }
                 }
 
-                this.map[ this.to1d( x, y ) ] = rawValue
+                // this.map[ this.to1d( x, y ) ] = rawValue
+                this.map[ this.to1d( x, y ) ] = tmp
+
+                if ( window.dummy ) {
+                    this.map[ this.to1d( x, y ) ] = rawValue
+                }
             }
         }
         console.timeEnd( 'chunkGen' )
@@ -208,6 +271,8 @@ mapView.render()
 
 window.mapView = mapView
 window.ChunkView = ChunkView
+
+window.dummy = false
 
 
 // Click handler to create new chunk
