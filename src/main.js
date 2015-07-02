@@ -2,9 +2,9 @@
 import Simplex from 'fast-simplex-noise'
 import makeGUI from './gui'
 
-const CANVAS_SIZE = 512
+const CANVAS_SIZE = 128
 const CHUNK_SIZE = 32
-const PIXEL_SIZE = 1
+const PIXEL_SIZE = 4
 
 const canvas = document.createElement( 'canvas' )
 const ctx = canvas.getContext( '2d' )
@@ -15,11 +15,11 @@ document.body.appendChild( canvas )
 
 
 let simplexParams = {
-    max: .6,
-    min: .3,
+    max: .8,
+    min: .5,
     frequency: .01,
     amplitude: 1,
-    octaves: 8,
+    octaves: 4,
     persistence: .5
 }
 
@@ -31,6 +31,7 @@ class ChunkView {
         this.fullSize = size * 2
         this.map = []
 
+        this.generated = false
         this.logging = false
 
         // this.generate()
@@ -124,7 +125,7 @@ class ChunkView {
      * @param edges <Object> contains each adjacent chunk
      */
     generate( edges ) {
-        //console.log( 'chunk::generate', edges )
+        console.log( 'chunk::generate', edges )
         //console.time( 'chunkGen' )
         let simplex = new Simplex( simplexParams )
         let edgeSize = this.offset
@@ -146,7 +147,7 @@ class ChunkView {
 
                 // rawValue = tmp
 
-                // Overlap top
+                // Overlaps
                 if ( edges.top ) {
                     if ( y < this.mapSize ) {
                         edgeValue = edges.top.map[ this.to1d( x, y + this.mapSize ) ]
@@ -178,16 +179,6 @@ class ChunkView {
                     if ( x < this.mapSize ) {
                         edgeValue = edges.left.map[ this.to1d( x + this.mapSize, y ) ]
                         lerpValue = 1 - ( ( x - edgeSize ) / ( this.offset - 1 ) )
-                        //
-                        // if ( this.logging ) {
-                        //     if ( x === this.offset ) {
-                        //         console.log( 'pixel', x, y )
-                        //         // console.log( 'edgePixel', x, y + this.mapSize )
-                        //         // console.log( 'rawValue', rawValue )
-                        //         // console.log( 'edgeValue', edgeValue )
-                        //         console.log( 'lerp', y < edgeSize ? 1 : lerpValue )
-                        //     }
-                        // }
 
                         // For overlap sections just use the section from the overlapper
                         // otherwise linearly merge the two based on how much the overlap
@@ -201,15 +192,47 @@ class ChunkView {
                     }
                 }
 
-                this.map[ this.to1d( x, y ) ] = rawValue
-                // this.map[ this.to1d( x, y ) ] = tmp
+                if ( edges.bottom ) {
+                    if ( y >= this.mapSize ) {
+                        edgeValue = edges.bottom.map[ this.to1d( x, y - this.mapSize ) ]
+                        lerpValue = ( ( y - this.mapSize ) / ( ( this.mapSize - 1 ) / 2 ) )
 
-                // if ( window.dummy ) {
-                // this.map[ this.to1d( x, y ) ] = rawValue
-                // }
+                        // For overlap sections just use the section from the overlapper
+                        // otherwise linearly merge the two based on how much the overlap
+                        // enters the visible section of this chunk
+                        // @TODO this should back-populate to the overlapping chunk
+                        rawValue = this.lerp(
+                            rawValue,
+                            edgeValue,
+                            y > this.mapSize + edgeSize ? 1 : lerpValue
+                        )
+                    }
+                }
+
+
+                if ( edges.right ) {
+                    if ( x >= this.mapSize ) {
+                        edgeValue = edges.right.map[ this.to1d( x - this.mapSize, y ) ]
+                        lerpValue = ( ( x - this.mapSize ) / ( ( this.mapSize - 1 ) / 2 ) )
+
+                        // For overlap sections just use the section from the overlapper
+                        // otherwise linearly merge the two based on how much the overlap
+                        // enters the visible section of this chunk
+                        // @TODO this should back-populate to the overlapping chunk
+                        rawValue = this.lerp(
+                            rawValue,
+                            edgeValue,
+                            x > this.mapSize + edgeSize ? 1 : lerpValue
+                        )
+                    }
+                }
+
+                this.map[ this.to1d( x, y ) ] = rawValue
             }
         }
         //console.timeEnd( 'chunkGen' )
+
+        this.generated = true
     }
 
     /**
@@ -264,11 +287,21 @@ class MapView {
         return x + ( y * ( size || this.mapSize ) )
     }
 
+    getGeneratedChunk( x, y ) {
+        let chunk = this.getChunk( x, y )
+        return chunk
+            ? chunk.generated
+                ? chunk
+                : null
+            : null
+    }
+
     getChunk( x, y ) {
         return this.chunks[ this.to1d( x, y ) ]
     }
 
     generateChunk( x, y, edges ) {
+        console.log( 'generating chunk', x, y )
         this.chunks[ this.to1d( x, y ) ].generate( edges )
 
         // Re-render, it'll be quicker than re-rendering everything
@@ -286,8 +319,10 @@ class MapView {
         for ( let y = 0; y < this.mapSize; y++ ) {
             for ( let x = 0; x < this.mapSize; x++ ) {
                 this.generateChunk( x, y, {
-                    top: this.chunks[ this.to1d( x, y - 1 ) ],
-                    left: this.chunks[ this.to1d( x - 1, y ) ]
+                    top: this.getGeneratedChunk( x, y - 1 ),
+                    left: this.getGeneratedChunk( x - 1, y ),
+                    bottom: this.getGeneratedChunk( x, y + 1 ),
+                    right: this.getGeneratedChunk( x + 1, y )
                 })
             }
         }
@@ -328,9 +363,12 @@ canvas.addEventListener( 'click', event => {
     let chunkX = ~~( event.offsetX / CHUNK_SIZE / PIXEL_SIZE )
     let chunkY = ~~( event.offsetY / CHUNK_SIZE / PIXEL_SIZE )
 
-    console.log( chunkX, chunkY )
+    // console.log( chunkX, chunkY )
     mapView.generateChunk( chunkX, chunkY, {
-        top: mapView.getChunk( chunkX, chunkY - 1 )
+        top: mapView.getChunk( chunkX, chunkY - 1 ),
+        left: mapView.getChunk( chunkX - 1, chunkY ),
+        bottom: mapView.getChunk( chunkX, chunkY + 1 ),
+        right: mapView.getChunk( chunkX + 1, chunkY )
     })
     mapView.renderChunk( chunkX, chunkY )
 })
