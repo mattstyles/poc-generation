@@ -1,34 +1,42 @@
 
 import dat from 'dat-gui'
+import EventEmitter from 'events'
 
-export default function makeGUI( view ) {
-    let gui = new dat.GUI()
+export default class Gui extends EventEmitter {
+    constructor( props ) {
+        super()
 
-    function onGUIChange() {
-        view.render()
+        this.props = props
+        this.gui = new dat.GUI()
+
+        this.gui.add( props, 'min', -1, 1 )
+            .step( 0.05 )
+            .onFinishChange( this.onChange )
+        this.gui.add( props, 'max', -1, 1 )
+            .step( 0.05 )
+            .onFinishChange( this.onChange )
+        this.gui.add( props, 'octaves', 1, 8 )
+            .step( 1 )
+            .onFinishChange( this.onChange )
+        this.gui.add( props, 'persistence', 0, 10 )
+            .step( 0.1 )
+            .onFinishChange( this.onChange )
+        this.gui.add( props, 'frequency', 0, 1 )
+            .step( 0.005 )
+            .onFinishChange( this.onChange )
+        this.gui.add( props, 'amplitude', 0, 10 )
+            .step( 0.1 )
+            .onFinishChange( this.onChange )
     }
 
-    gui.add( view, 'min', -1, 1 )
-        .step( 0.05 )
-        .onFinishChange( onGUIChange )
-    gui.add( view, 'max', -1, 1 )
-        .step( 0.05 )
-        .onFinishChange( onGUIChange )
-    gui.add( view, 'octaves', 1, 8 )
-        .step( 1 )
-        .onFinishChange( onGUIChange )
-    gui.add( view, 'persistence', 0, 10 )
-        .step( 0.1 )
-        .onFinishChange( onGUIChange )
-    gui.add( view, 'frequency', 0, 1 )
-        .step( 0.005 )
-        .onFinishChange( onGUIChange )
-    gui.add( view, 'amplitude', 0, 10 )
-        .step( 0.1 )
-        .onFinishChange( onGUIChange )
-    gui.add( view, 'mapSize', 1, 10 )
-        .step( 1 )
-        .onFinishChange( onGUIChange )
+    register( name, fn ) {
+        let func = {}
+        func[ name ] = fn
+        this.gui.add( func, name )
+    }
 
-    return gui
+    onChange = () => {
+        this.emit( 'change' )
+    }
+
 }

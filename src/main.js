@@ -1,10 +1,10 @@
 
 import Simplex from 'fast-simplex-noise'
-import makeGUI from './gui'
+import Gui from './gui'
 
-const CANVAS_SIZE = 128
+const CANVAS_SIZE = 256
 const CHUNK_SIZE = 32
-const PIXEL_SIZE = 4
+const PIXEL_SIZE = 2
 
 const canvas = document.createElement( 'canvas' )
 const ctx = canvas.getContext( '2d' )
@@ -15,11 +15,11 @@ document.body.appendChild( canvas )
 
 
 let simplexParams = {
-    max: .8,
-    min: .5,
+    max: .65,
+    min: .4,
     frequency: .01,
     amplitude: 1,
-    octaves: 4,
+    octaves: 3,
     persistence: .5
 }
 
@@ -125,7 +125,7 @@ class ChunkView {
      * @param edges <Object> contains each adjacent chunk
      */
     generate( edges ) {
-        console.log( 'chunk::generate', edges )
+        // console.log( 'chunk::generate', edges )
         //console.time( 'chunkGen' )
         let simplex = new Simplex( simplexParams )
         let edgeSize = this.offset
@@ -283,6 +283,14 @@ class MapView {
         }
     }
 
+    clear() {
+        for ( let y = 0; y < this.mapSize; y++ ) {
+            for ( let x = 0; x < this.mapSize; x++ ) {
+                this.chunks[ this.to1d( x, y ) ] = new ChunkView( CHUNK_SIZE )
+            }
+        }
+    }
+
     to1d( x, y, size ) {
         return x + ( y * ( size || this.mapSize ) )
     }
@@ -297,11 +305,17 @@ class MapView {
     }
 
     getChunk( x, y ) {
+        if ( x < 0 ||
+             x >= this.mapSize ||
+             y < 0 ||
+             y >= this.mapSize ) {
+            return null
+        }
         return this.chunks[ this.to1d( x, y ) ]
     }
 
     generateChunk( x, y, edges ) {
-        console.log( 'generating chunk', x, y )
+        // console.log( 'generating chunk', x, y )
         this.chunks[ this.to1d( x, y ) ].generate( edges )
 
         // Re-render, it'll be quicker than re-rendering everything
@@ -309,7 +323,7 @@ class MapView {
     }
 
     renderChunk( x, y ) {
-        console.log( 'rendering chunk', x, y )
+        // console.log( 'rendering chunk', x, y )
         this.chunks[ this.to1d( x, y ) ].render( x * CHUNK_SIZE * PIXEL_SIZE, y * CHUNK_SIZE * PIXEL_SIZE )
     }
 
@@ -330,6 +344,7 @@ class MapView {
     }
 
     render() {
+        ctx.clearRect( 0, 0, CANVAS_SIZE * PIXEL_SIZE, CANVAS_SIZE * PIXEL_SIZE )
         for ( let y = 0; y < this.mapSize; y++ ) {
             for ( let x = 0; x < this.mapSize; x++ ) {
                 this.renderChunk( x, y )
@@ -340,7 +355,14 @@ class MapView {
 
 
 let mapView = new MapView()
+let gui = new Gui( simplexParams )
 
+gui.register( 'Generate', () => {
+    console.log( 'Generating' )
+    mapView.clear()
+    mapView.generate()
+    mapView.render()
+})
 
 window.mapView = mapView
 window.ChunkView = ChunkView
