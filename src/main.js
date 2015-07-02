@@ -2,9 +2,9 @@
 import Simplex from 'fast-simplex-noise'
 import makeGUI from './gui'
 
-const CANVAS_SIZE = 128
+const CANVAS_SIZE = 512
 const CHUNK_SIZE = 32
-const PIXEL_SIZE = 4
+const PIXEL_SIZE = 1
 
 const canvas = document.createElement( 'canvas' )
 const ctx = canvas.getContext( '2d' )
@@ -15,8 +15,8 @@ document.body.appendChild( canvas )
 
 
 let simplexParams = {
-    max: 1,
-    min: 0,
+    max: .6,
+    min: .3,
     frequency: .01,
     amplitude: 1,
     octaves: 8,
@@ -30,6 +30,8 @@ class ChunkView {
         this.mapSize = size
         this.fullSize = size * 2
         this.map = []
+
+        this.logging = false
 
         // this.generate()
     }
@@ -125,6 +127,7 @@ class ChunkView {
         //console.log( 'chunk::generate', edges )
         //console.time( 'chunkGen' )
         let simplex = new Simplex( simplexParams )
+        let edgeSize = this.offset
         let rawValue = 1
         let edgeValue = 1
         let lerpValue = 1
@@ -147,15 +150,18 @@ class ChunkView {
                 if ( edges.top ) {
                     if ( y < this.mapSize ) {
                         edgeValue = edges.top.map[ this.to1d( x, y + this.mapSize ) ]
-                        lerpValue = 1 - ( ( y - this.offset ) / this.mapSize )
+                        lerpValue = 1 - ( ( y - edgeSize ) / ( this.offset - 1 ) )
 
-                        // if ( x === this.offset && y === this.offset ) {
-                        //     console.log( 'pixel', x, y )
-                        //     console.log( 'edgePixel', x, y + this.mapSize )
-                        //     console.log( 'rawValue', rawValue )
-                        //     console.log( 'edgeValue', edgeValue )
-                        //     console.log( 'lerp', lerpValue )
-                        // }
+                        if ( this.logging ) {
+                            if ( x === this.offset ) {
+                                console.log( 'pixel', x, y )
+                                // console.log( 'edgePixel', x, y + this.mapSize )
+                                // console.log( 'rawValue', rawValue )
+                                // console.log( 'edgeValue', edgeValue )
+                                console.log( 'lerp', y < edgeSize ? 1 : lerpValue )
+                            }
+                        }
+
 
                         // For overlap sections just use the section from the overlapper
                         // otherwise linearly merge the two based on how much the overlap
@@ -164,7 +170,7 @@ class ChunkView {
                         rawValue = this.lerp(
                             rawValue,
                             edgeValue,
-                            y < this.offset ? 1 : lerpValue
+                            y < edgeSize ? 1 : lerpValue
                         )
 
 
@@ -176,11 +182,11 @@ class ChunkView {
                     }
                 }
 
-                // this.map[ this.to1d( x, y ) ] = rawValue
+                this.map[ this.to1d( x, y ) ] = rawValue
                 // this.map[ this.to1d( x, y ) ] = tmp
 
                 // if ( window.dummy ) {
-                this.map[ this.to1d( x, y ) ] = rawValue
+                // this.map[ this.to1d( x, y ) ] = rawValue
                 // }
             }
         }
@@ -191,7 +197,7 @@ class ChunkView {
      * Renders at x,y within the canvas
      */
     render( x, y ) {
-        console.log( 'rendering chunk at', x, y )
+        // console.log( 'rendering chunk at', x, y )
         ctx.clearRect( x, y, this.mapSize * PIXEL_SIZE, this.mapSize * PIXEL_SIZE )
 
         // Each chunk has an overlap which is half its size
@@ -216,8 +222,8 @@ class ChunkView {
 
         // Draw red dot to help differentiate the grid
         // @TODO remove
-        ctx.fillStyle = '#ff0000'
-        ctx.fillRect( x + ( ( CHUNK_SIZE - 1 ) * PIXEL_SIZE ), y + ( ( CHUNK_SIZE - 1 ) * PIXEL_SIZE ), PIXEL_SIZE, PIXEL_SIZE )
+        //ctx.fillStyle = '#ff0000'
+        //ctx.fillRect( x + ( ( CHUNK_SIZE - 1 ) * PIXEL_SIZE ), y + ( ( CHUNK_SIZE - 1 ) * PIXEL_SIZE ), PIXEL_SIZE, PIXEL_SIZE )
     }
 }
 
@@ -288,6 +294,7 @@ window.ctx = ctx
 
 window.dummy = false
 window.text = false
+
 
 
 
