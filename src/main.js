@@ -162,7 +162,6 @@ class ChunkView {
                             }
                         }
 
-
                         // For overlap sections just use the section from the overlapper
                         // otherwise linearly merge the two based on how much the overlap
                         // enters the visible section of this chunk
@@ -172,13 +171,33 @@ class ChunkView {
                             edgeValue,
                             y < edgeSize ? 1 : lerpValue
                         )
+                    }
+                }
 
-
-                        // if ( x === this.offset && y === this.offset ) {
-                        //     console.log( 'lerped value', rawValue )
+                if ( edges.left ) {
+                    if ( x < this.mapSize ) {
+                        edgeValue = edges.left.map[ this.to1d( x + this.mapSize, y ) ]
+                        lerpValue = 1 - ( ( x - edgeSize ) / ( this.offset - 1 ) )
+                        //
+                        // if ( this.logging ) {
+                        //     if ( x === this.offset ) {
+                        //         console.log( 'pixel', x, y )
+                        //         // console.log( 'edgePixel', x, y + this.mapSize )
+                        //         // console.log( 'rawValue', rawValue )
+                        //         // console.log( 'edgeValue', edgeValue )
+                        //         console.log( 'lerp', y < edgeSize ? 1 : lerpValue )
+                        //     }
                         // }
 
-
+                        // For overlap sections just use the section from the overlapper
+                        // otherwise linearly merge the two based on how much the overlap
+                        // enters the visible section of this chunk
+                        // @TODO this should back-populate to the overlapping chunk
+                        rawValue = this.lerp(
+                            rawValue,
+                            edgeValue,
+                            x < edgeSize ? 1 : lerpValue
+                        )
                     }
                 }
 
@@ -267,7 +286,8 @@ class MapView {
         for ( let y = 0; y < this.mapSize; y++ ) {
             for ( let x = 0; x < this.mapSize; x++ ) {
                 this.generateChunk( x, y, {
-                    top: this.chunks[ this.to1d( x, y - 1 ) ]
+                    top: this.chunks[ this.to1d( x, y - 1 ) ],
+                    left: this.chunks[ this.to1d( x - 1, y ) ]
                 })
             }
         }
