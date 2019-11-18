@@ -22,7 +22,7 @@
     "babelify": "^6.1.2",
     "browserify": "^10.2.4",
     "dat-gui": "^0.5.0",
-    "eslint": "^0.24.0",
+    "eslint": "^6.6.0",
     "fast-simplex-noise": "^1.0.0",
     "watch": "^0.16.0"
   }
